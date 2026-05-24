@@ -631,19 +631,24 @@
 
       let isTicketViewMode = false;
 
-      (function checkStartParam() {
-        const startParam = tg?.initDataUnsafe?.start_param;
-        if (startParam) {
-          isTicketViewMode = true;
-          document.getElementById("scan-next-btn").classList.add("hidden");
-          document.getElementById("scan-container").classList.add("hidden");
-          document
-            .getElementById("result-container")
-            .classList.remove("hidden");
-          setLoadingState();
-          fetchDataFromServer(startParam);
-        }
-      })();
+      // Ждём пока Telegram WebApp полностью инициализируется
+      if (tg) {
+        tg.ready();
+        // Небольшой defer чтобы initDataUnsafe точно заполнился
+        setTimeout(function checkStartParam() {
+          const startParam = tg?.initDataUnsafe?.start_param;
+          if (startParam) {
+            isTicketViewMode = true;
+            document.getElementById("scan-next-btn").classList.add("hidden");
+            document.getElementById("scan-container").classList.add("hidden");
+            document
+              .getElementById("result-container")
+              .classList.remove("hidden");
+            setLoadingState();
+            fetchDataFromServer(startParam);
+          }
+        }, 50);
+      }
 
       // ─── Loading skeleton ────────────────────────────────────────────────────
 
@@ -817,11 +822,6 @@
         document.getElementById("result-container").classList.add("hidden");
         document.getElementById("scan-container").classList.remove("hidden");
       }
-      document.body.insertAdjacentHTML('beforeend', `
-        <div style="position:fixed;top:0;left:0;background:red;color:white;font-size:11px;padding:6px 8px;z-index:99999;word-break:break-all;max-width:100%">
-          ${window.location.href}
-        </div>
-      `);
     </script>
   </body>
 </html>
