@@ -62,12 +62,48 @@
         font-family: "Arial Rounded MT Bold", Arial, Helvetica, sans-serif;
         text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
       }
+
+      /* Toast notification */
+      #toast {
+        position: fixed;
+        bottom: 2rem;
+        left: 50%;
+        transform: translateX(-50%) translateY(120%);
+        z-index: 9999;
+        min-width: 280px;
+        max-width: 360px;
+        transition:
+          transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+          opacity 0.35s ease;
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      #toast.show {
+        transform: translateX(-50%) translateY(0);
+        opacity: 1;
+        pointer-events: auto;
+      }
     </style>
   </head>
 
   <body
     class="text-gray-100 font-sans min-h-screen p-4 flex items-center justify-center"
   >
+    <!-- Toast notification -->
+    <div id="toast">
+      <div
+        id="toast-inner"
+        class="flex items-start gap-3 rounded-2xl px-4 py-3.5 shadow-2xl border backdrop-blur-md"
+      >
+        <span id="toast-icon" class="text-xl mt-0.5 shrink-0"></span>
+        <div>
+          <p id="toast-title" class="font-bold text-sm leading-tight"></p>
+          <p id="toast-body" class="text-xs mt-0.5 opacity-80 leading-snug"></p>
+        </div>
+      </div>
+    </div>
+
     <div id="app-shell" class="p-6">
       <header class="text-center my-4 content-layer">
         <h1 class="text-3xl title tracking-wide">LEVEL DANCE</h1>
@@ -85,11 +121,6 @@
             Нажмите кнопку ниже, чтобы открыть камеру Telegram и отсканировать
             QR-код билета.
           </p>
-
-          <div
-            id="error-message"
-            class="hidden text-sm text-red-200 bg-red-950/80 border border-red-500/40 rounded-xl p-3 mb-4"
-          ></div>
 
           <button
             type="button"
@@ -175,75 +206,71 @@
       // СЮДА СВОЙ ДОМЕН / URL ОТ NGROK СЕРВЕРА FASTAPI
       const API_BASE_URL = "https://daughter-equate-suburb.ngrok-free.dev";
 
-      // ФУНКЦИЯ ДЛЯ ВЫВОДА ЛОГОВ НА ЭКРАН
-      function logToScreen(type, message, data = null) {
-        const errorElement = document.getElementById("error-message");
+      // ─── Toast уведомления ───────────────────────────────────────────────────
 
-        // Делаем блок видимым, меняем стиль под системную консоль
-        errorElement.classList.remove("hidden");
-        errorElement.className =
-          "text-left text-xs font-mono bg-black/90 border border-purple-500/50 rounded-xl p-3 mb-4 max-h-60 overflow-y-auto space-y-1 text-gray-300 shadow-inner";
+      let toastTimer = null;
 
-        let colorClass = "text-blue-400"; // По умолчанию INFO
-        if (type === "SUCCESS") colorClass = "text-emerald-400 font-bold";
-        if (type === "ERROR") colorClass = "text-red-400 font-bold";
-        if (type === "WARN") colorClass = "text-amber-400";
+      function showToast(type, title, body = "") {
+        const toast = document.getElementById("toast");
+        const inner = document.getElementById("toast-inner");
+        const icon = document.getElementById("toast-icon");
+        const ttl = document.getElementById("toast-title");
+        const tbd = document.getElementById("toast-body");
 
-        const time = new Date().toLocaleTimeString();
-        let logLine = `<div>[${time}] <span class="${colorClass}">${type}</span>: ${message}</div>`;
+        // Сбрасываем предыдущий таймер, если был
+        if (toastTimer) clearTimeout(toastTimer);
 
-        if (data) {
-          logLine += `<pre class="text-[10px] text-gray-500 bg-gray-950 p-1.5 rounded mt-0.5 overflow-x-auto">${JSON.stringify(data, null, 2)}</pre>`;
-        }
+        // Стили по типу
+        const styles = {
+          error: {
+            wrap: "bg-red-950/90 border-red-500/40 text-red-100",
+            ico: "❌",
+          },
+          warn: {
+            wrap: "bg-amber-950/90 border-amber-500/40 text-amber-100",
+            ico: "⚠️",
+          },
+          success: {
+            wrap: "bg-emerald-950/90 border-emerald-500/40 text-emerald-100",
+            ico: "✅",
+          },
+        };
 
-        // Дописываем лог вниз
-        errorElement.innerHTML += logLine;
-        // Скроллим консоль вниз
-        errorElement.scrollTop = errorElement.scrollHeight;
+        const s = styles[type] || styles.error;
+        inner.className = `flex items-start gap-3 rounded-2xl px-4 py-3.5 shadow-2xl border backdrop-blur-md ${s.wrap}`;
+        icon.textContent = s.ico;
+        ttl.textContent = title;
+        tbd.textContent = body;
+
+        toast.classList.add("show");
+
+        // Автоскрытие через 4 секунды
+        toastTimer = setTimeout(() => {
+          toast.classList.remove("show");
+        }, 4000);
       }
 
-      function clearLogs() {
-        const errorElement = document.getElementById("error-message");
-        errorElement.innerHTML = "";
-        errorElement.classList.add("hidden");
-      }
+      // Закрытие по тапу на тост
+      document.getElementById("toast").addEventListener("click", () => {
+        document.getElementById("toast").classList.remove("show");
+        if (toastTimer) clearTimeout(toastTimer);
+      });
+
+      // ─── Инициализация ТГ WebApp ────────────────────────────────────────────
 
       function initTelegramWebApp() {
-        logToScreen("INFO", "Инициализация Telegram WebApp...");
-        if (!tg) {
-          logToScreen(
-            "WARN",
-            "Telegram WebApp объект не найден! Работаем вне ТГ?",
-          );
-          return;
-        }
+        if (!tg) return;
         try {
           tg.ready();
-          logToScreen("INFO", "tg.ready() успешно вызван");
-          if (typeof tg.expand === "function") {
-            tg.expand();
-            logToScreen(
-              "INFO",
-              "tg.expand() вызван (развернуто на весь экран)",
-            );
-          }
-
-          // Логируем наличие initData
-          if (tg.initData) {
-            logToScreen(
-              "INFO",
-              `initData найдена (длина: ${tg.initData.length} символов)`,
-            );
-          } else {
-            logToScreen(
-              "WARN",
-              "initData ПУСТАЯ! Запрос на бэк может не пройти валидацию.",
-            );
-          }
-        } catch (error) {
-          logToScreen("ERROR", "Ошибка при инициализации ТГ:", error.message);
+          if (typeof tg.expand === "function") tg.expand();
+        } catch (e) {
+          // Тихая ошибка инициализации — не мешаем работе
         }
       }
+
+      initTelegramWebApp();
+
+      // ─── Состояние загрузки карточки ────────────────────────────────────────
 
       function setLoadingState() {
         document.getElementById("event-title").innerText =
@@ -255,65 +282,68 @@
         document.getElementById("ticket-status").innerText = "—";
       }
 
-      // Запускаем первичные логи
-      initTelegramWebApp();
+      // ─── Запуск сканера ──────────────────────────────────────────────────────
 
       function startScanning() {
-        clearLogs();
-        logToScreen("INFO", "Нажата кнопка запуска сканера");
-
         if (!tg) {
-          logToScreen("ERROR", "Не могу открыть сканер: запуск вне Telegram");
+          showToast(
+            "error",
+            "Недоступно вне Telegram",
+            "Откройте приложение через Telegram.",
+          );
           return;
         }
         if (
           typeof tg.isVersionAtLeast !== "function" ||
           !tg.isVersionAtLeast("6.4")
         ) {
-          logToScreen("ERROR", "Версия ТГ ниже 6.4. Сканер не поддерживается.");
+          showToast(
+            "error",
+            "Обновите Telegram",
+            "Ваша версия приложения не поддерживает сканер QR.",
+          );
           return;
         }
 
-        logToScreen("INFO", "Вызываем tg.showScanQrPopup...");
         tg.showScanQrPopup(
           { text: "Наведите камеру на QR-код билета" },
           function (text) {
-            logToScreen(
-              "SUCCESS",
-              `QR-код успешно считан! Текст из QR: "${text}"`,
-            );
             handleScannedUrl(text);
-            return true; // Закрываем шторку камеры
+            return true;
           },
         );
       }
 
+      // ─── Обработка отсканированного URL ─────────────────────────────────────
+
       function handleScannedUrl(text) {
         if (!text || typeof text !== "string") {
-          logToScreen("ERROR", " handleScannedUrl получил пустой текст");
+          showToast(
+            "error",
+            "Пустой QR-код",
+            "Не удалось прочитать данные. Попробуйте ещё раз.",
+          );
           return;
         }
 
-        logToScreen("INFO", "Парсим полученный текст в URL...");
         let parsedUrl;
         try {
           parsedUrl = new URL(text);
-          logToScreen("INFO", `URL успешно распарсен. Хост: ${parsedUrl.host}`);
-        } catch (error) {
-          logToScreen("ERROR", "Текст из QR не является валидным URL-адресом");
+        } catch {
+          showToast(
+            "error",
+            "Неверный QR-код",
+            "Этот код не является билетом мероприятия.",
+          );
           return;
         }
 
         const ticketId = parsedUrl.searchParams.get("startapp");
-        logToScreen(
-          "INFO",
-          `Ищем параметр 'startapp' в URL... Результат: "${ticketId}"`,
-        );
-
         if (!ticketId) {
-          logToScreen(
-            "ERROR",
-            "Параметр 'startapp' отсутствует в данном QR-коде!",
+          showToast(
+            "error",
+            "Неверный QR-код",
+            "В коде отсутствует идентификатор билета.",
           );
           return;
         }
@@ -321,75 +351,64 @@
         fetchDataFromServer(ticketId);
       }
 
+      // ─── Запрос на сервер ────────────────────────────────────────────────────
+
       async function fetchDataFromServer(ticketId) {
         setLoadingState();
+        document.getElementById("scan-container").classList.add("hidden");
+        document.getElementById("result-container").classList.remove("hidden");
+
         const targetUrl = `${API_BASE_URL}/api/participant/${encodeURIComponent(ticketId)}`;
 
-        logToScreen("INFO", "Подготовка к отправке fetch запроса...");
-        logToScreen("INFO", `👉 URL запроса: ${targetUrl}`);
-
-        const headersToSend = {
-          "Content-Type": "application/json",
-          "X-Tg-Init-Data": tg?.initData || "",
-          "ngrok-skip-browser-warning": "69420",
-        };
-        logToScreen("INFO", "👉 Отправляемые заголовки:", headersToSend);
-
         try {
-          logToScreen("INFO", "Отправляем fetch запрос на сервер...");
           const response = await fetch(targetUrl, {
             method: "GET",
-            headers: headersToSend,
+            headers: {
+              "Content-Type": "application/json",
+              "X-Tg-Init-Data": tg?.initData || "",
+              "ngrok-skip-browser-warning": "69420",
+            },
           });
 
-          logToScreen(
-            "INFO",
-            `Статус ответа от сервера: ${response.status} (${response.statusText})`,
-          );
-
           if (!response.ok) {
-            logToScreen(
-              "ERROR",
-              `Сервер вернул ошибку! Статус: ${response.status}`,
-            );
-            if (response.status === 404)
-              throw new Error("Билет не найден в базе данных.");
-            if (response.status === 403)
-              throw new Error(
-                "Ошибка безопасности: доступ заблокирован бэкендом.",
+            resetScanner();
+            if (response.status === 404) {
+              showToast(
+                "error",
+                "Билет не найден",
+                "Этот QR-код не зарегистрирован в системе.",
               );
-            throw new Error(`Ошибка сервера. Статус: ${response.status}`);
+            } else if (response.status === 403) {
+              showToast(
+                "error",
+                "Нет доступа",
+                "Авторизация не прошла. Обратитесь к организатору.",
+              );
+            } else {
+              showToast(
+                "error",
+                "Ошибка сервера",
+                `Код ответа: ${response.status}. Попробуйте позже.`,
+              );
+            }
+            return;
           }
 
-          logToScreen(
-            "INFO",
-            "Запрос успешен (response.ok = true). Читаем JSON body...",
-          );
           const data = await response.json();
-
-          logToScreen("SUCCESS", "Данные успешно получены с бэка!", data);
           renderTicketCard(data);
-        } catch (error) {
-          logToScreen(
-            "ERROR",
-            `💥 Перехвачена критическая ошибка во fetch: "${error.message}"`,
+        } catch {
+          resetScanner();
+          showToast(
+            "error",
+            "Нет связи с сервером",
+            "Проверьте интернет-соединение и попробуйте снова.",
           );
-          // Если это реальный Failed to fetch, выведем подробности
-          if (error.message === "Failed to fetch") {
-            logToScreen(
-              "ERROR",
-              "Подсказка: Проверь, работает ли сервер/ngrok, совпадает ли ссылка, или это блокировка CORS/MixContent.",
-            );
-          }
         }
       }
 
-      function renderTicketCard(ticket) {
-        logToScreen(
-          "INFO",
-          "Начинаем рендеринг карточки результата на экране...",
-        );
+      // ─── Отрисовка карточки билета ───────────────────────────────────────────
 
+      function renderTicketCard(ticket) {
         document.getElementById("event-title").innerText =
           ticket?.event_name || "Без названия";
         document.getElementById("buyer-name").innerText =
@@ -411,27 +430,21 @@
           statusElement.innerText = `❌ УЖЕ ИСПОЛЬЗОВАН (${ticket.entered_at})`;
           statusElement.className =
             "text-xs font-bold mt-0.5 text-red-400 bg-red-950/40 p-1.5 rounded border border-red-500/20";
-          logToScreen(
-            "WARN",
-            `Вход заблокирован: билет уже был погашен в ${ticket.entered_at}`,
-          );
         } else {
           statusElement.innerText = "✅ ДЕЙСТВИТЕЛЕН (Вход разрешен)";
           statusElement.className =
             "text-xs font-bold mt-0.5 text-emerald-400 bg-emerald-950/40 p-1.5 rounded border border-emerald-500/20";
-          logToScreen("SUCCESS", "Вход разрешен! Билет чистый.");
         }
 
         document.getElementById("scan-container").classList.add("hidden");
         document.getElementById("result-container").classList.remove("hidden");
-        logToScreen("SUCCESS", "Карточка результата успешно отображена.");
       }
 
+      // ─── Сброс сканера ───────────────────────────────────────────────────────
+
       function resetScanner() {
-        clearLogs();
         document.getElementById("result-container").classList.add("hidden");
         document.getElementById("scan-container").classList.remove("hidden");
-        logToScreen("INFO", "Сканер сброшен, готовы к новому сканированию");
       }
     </script>
   </body>
