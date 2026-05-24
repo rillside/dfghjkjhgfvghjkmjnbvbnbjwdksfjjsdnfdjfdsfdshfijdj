@@ -172,22 +172,30 @@
           ? window.Telegram.WebApp
           : null;
 
-      // СЮДА СВОЙ АКТУАЛЬНЫЙ ДОМЕН (NGROK ИЛИ РЕАЛЬНЫЙ СЕРВЕР)
+      // ТВОЙ АКТУАЛЬНЫЙ URL ДОМЕНА NGROK
       const API_BASE_URL = "https://daughter-equate-suburb.ngrok-free.dev";
 
       function initTelegramWebApp() {
-        if (!tg) return;
+        console.log("Инициализация Telegram WebApp...");
+        if (!tg) {
+          console.warn("Telegram WebApp объект не найден! Работаем вне ТГ?");
+          return;
+        }
         try {
           tg.ready();
-          if (typeof tg.expand === "function") tg.expand();
+          if (typeof tg.expand === "function") {
+            tg.expand();
+          }
         } catch (error) {
-          console.error("Ошибка инициализации WebApp:", error);
+          console.error("Ошибка при инициализации ТГ:", error.message);
         }
       }
 
       function showError(message) {
         const errorElement = document.getElementById("error-message");
         errorElement.innerText = message;
+        errorElement.className =
+          "text-sm text-red-200 bg-red-950/80 border border-red-500/40 rounded-xl p-3 mb-4 text-center";
         errorElement.classList.remove("hidden");
       }
 
@@ -198,7 +206,6 @@
       }
 
       function setLoadingState() {
-        hideError();
         document.getElementById("event-title").innerText =
           "Загрузка данных билета...";
         document.getElementById("buyer-name").innerText = "—";
@@ -206,29 +213,24 @@
         document.getElementById("event-info").innerText = "—";
         document.getElementById("ticket-price").innerText = "—";
         document.getElementById("ticket-status").innerText = "—";
-
-        document.getElementById("scan-container").classList.add("hidden");
-        document.getElementById("result-container").classList.remove("hidden");
       }
 
-      // Инициализируем базовые параметры WebApp
+      // Запускаем первичную инициализацию
       initTelegramWebApp();
 
-      // АВТОМАТИЧЕСКИЙ ПЕРЕХВАТ STARTAPP ПРИ СТАРТЕ СТРАНИЦЫ
+      // АВТО-ПЕРЕХВАТ ПРИ СТАРТЕ ПО ПРЯМОЙ ССЫЛКЕ (БЕЗОПАСНЫЙ)
       window.addEventListener("DOMContentLoaded", () => {
-        // 1. Пробуем достать из URL браузера (если зашли по прямой ссылке приложения)
         const urlParams = new URLSearchParams(window.location.search);
         let ticketId =
           urlParams.get("tgWebAppStartParam") || urlParams.get("startapp");
 
-        // 2. Если в URL пусто, берем напрямую из безопасного контекста самого Telegram
         if (!ticketId && tg && tg.initDataUnsafe) {
           ticketId = tg.initDataUnsafe.start_param;
         }
 
         if (ticketId) {
           console.log(
-            `[PROD] Найден стартовый параметр. Авто-проверка билета #${ticketId}`,
+            `[PROD] Найдена прямая ссылка. Проверяем билет #${ticketId}`,
           );
           fetchDataFromServer(ticketId);
         }
@@ -237,14 +239,14 @@
       function startScanning() {
         hideError();
         if (!tg) {
-          showError("Откройте страницу внутри Telegram Web Apps.");
+          showError("Не могу открыть сканер: запуск вне Telegram");
           return;
         }
         if (
           typeof tg.isVersionAtLeast !== "function" ||
           !tg.isVersionAtLeast("6.4")
         ) {
-          showError("Пожалуйста, обновите Telegram до версии 6.4 или выше.");
+          showError("Версия ТГ ниже 6.4. Сканер не поддерживается.");
           return;
         }
 
@@ -252,27 +254,28 @@
           { text: "Наведите камеру на QR-код билета" },
           function (text) {
             handleScannedUrl(text);
-            return true; // Команда Telegram мгновенно закрыть шторку камеры
+            return true; // Закрываем шторку камеры
           },
         );
       }
 
       function handleScannedUrl(text) {
         if (!text || typeof text !== "string") {
-          showError("Получен пустой или некорректный QR-код.");
+          showError("Получен пустой текст из QR-кода");
           return;
         }
+
         let parsedUrl;
         try {
           parsedUrl = new URL(text);
         } catch (error) {
-          showError("QR-код не содержит рабочий URL-адрес.");
+          showError("Текст из QR не является валидным URL-адресом");
           return;
         }
 
         const ticketId = parsedUrl.searchParams.get("startapp");
         if (!ticketId) {
-          showError("В QR-коде не найден параметр билета (startapp).");
+          showError("Параметр 'startapp' отсутствует в данном QR-коде!");
           return;
         }
 
@@ -281,41 +284,37 @@
 
       async function fetchDataFromServer(ticketId) {
         setLoadingState();
+        const targetUrl = `${API_BASE_URL}/api/participant/${encodeURIComponent(ticketId)}`;
+
         try {
-          const response = await fetch(
-            `${API_BASE_URL}/api/participant/${encodeURIComponent(ticketId)}`,
-            {
-              method: "GET",
-              headers: {
-                "Content-Type": "application/json",
-                "X-Tg-Init-Data": tg?.initData || "",
-                "ngrok-skip-browser-warning": "69420",
-              },
+          const response = await fetch(targetUrl, {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Tg-Init-Data": tg?.initData || "",
             },
-          );
+          });
 
           if (!response.ok) {
             if (response.status === 404)
               throw new Error("Билет не найден в базе данных.");
             if (response.status === 403)
-              throw new Error("Ошибка доступа: неверная подпись Telegram.");
-            throw new Error(`Ошибка сервера (Статус: ${response.status}).`);
+              throw new Error(
+                "Ошибка безопасности: доступ заблокирован бэкендом.",
+              );
+            throw new Error(`Ошибка сервера. Статус: ${response.status}`);
           }
 
           const data = await response.json();
           renderTicketCard(data);
         } catch (error) {
-          console.error("[PROD ERROR] Fetch failed:", error.message);
-          showError(error.message || "Не удалось загрузить данные билета.");
-
-          // Возвращаем интерфейс в режим готовности к новому сканированию
-          document.getElementById("result-container").classList.add("hidden");
-          document.getElementById("scan-container").classList.remove("hidden");
+          console.error("[PROD FETCH ERROR]:", error.message);
+          showError(error.message || "Не удалось получить данные билета.");
+          resetScanner();
         }
       }
 
       function renderTicketCard(ticket) {
-        // Подставляем поля строго под структуру твоих таблиц SQLite3
         document.getElementById("event-title").innerText =
           ticket?.event_name || "Без названия";
         document.getElementById("buyer-name").innerText =
@@ -343,6 +342,7 @@
             "text-xs font-bold mt-0.5 text-emerald-400 bg-emerald-950/40 p-1.5 rounded border border-emerald-500/20";
         }
 
+        // Переключаем контейнеры СТРОГО в самом конце, когда все данные уже отрисованы в DOM
         document.getElementById("scan-container").classList.add("hidden");
         document.getElementById("result-container").classList.remove("hidden");
       }
