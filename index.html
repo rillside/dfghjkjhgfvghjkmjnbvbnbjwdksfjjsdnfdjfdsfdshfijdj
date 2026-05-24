@@ -390,11 +390,6 @@
       }
     </style>
   </head>
-  <script>
-    document.body.innerHTML += `<div style="position:fixed;top:0;left:0;background:red;color:white;font-size:12px;padding:8px;z-index:99999;word-break:break-all">
-    ${window.location.href}
-  </div>`;
-  </script>
   <body class="min-h-screen p-4 flex items-center justify-center">
     <!-- Toast -->
     <div id="toast">
@@ -822,6 +817,11 @@
         document.getElementById("result-container").classList.add("hidden");
         document.getElementById("scan-container").classList.remove("hidden");
       }
+      document.body.insertAdjacentHTML('beforeend', `
+        <div style="position:fixed;top:0;left:0;background:red;color:white;font-size:11px;padding:6px 8px;z-index:99999;word-break:break-all;max-width:100%">
+          ${window.location.href}
+        </div>
+      `);
     </script>
   </body>
 </html>
