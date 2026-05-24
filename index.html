@@ -5,10 +5,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Сканер Участников</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;700;900&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <style>
+      :root {
+        --accent: #a855f7;
+        --accent-dim: #7c3aed;
+        --accent-glow: rgba(168, 85, 247, 0.35);
+        --card-bg: rgba(8, 8, 20, 0.82);
+        --border: rgba(255, 255, 255, 0.08);
+        --field-border: rgba(168, 85, 247, 0.25);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
       body {
         background-color: #0b0d19;
+        font-family: "Inter", sans-serif;
       }
 
       #app-shell {
@@ -21,7 +41,9 @@
         background-position: center;
         background-repeat: no-repeat;
         border-radius: 2rem;
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+        box-shadow:
+          0 24px 64px rgba(0, 0, 0, 0.6),
+          0 0 0 1px rgba(255, 255, 255, 0.06);
         overflow: hidden;
         display: flex;
         flex-direction: column;
@@ -34,8 +56,8 @@
         inset: 0;
         background: linear-gradient(
           180deg,
-          rgba(11, 13, 25, 0.2) 0%,
-          rgba(11, 13, 25, 0.85) 100%
+          rgba(11, 13, 25, 0.15) 0%,
+          rgba(11, 13, 25, 0.92) 100%
         );
         z-index: 0;
       }
@@ -45,153 +67,493 @@
         z-index: 1;
       }
 
-      .title {
-        color: #ffffff;
-        font-family: "Arial Rounded MT Bold", Arial, Helvetica, sans-serif;
-        font-weight: bold;
-        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+      /* ── Header ── */
+      .header-wrap {
+        background: rgba(11, 13, 25, 0.45);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border-bottom: 1px solid var(--border);
+        padding: 1.25rem 1.5rem 1rem;
       }
 
-      .scaner-button {
-        font-family: "Arial Rounded MT Bold", Arial, Helvetica, sans-serif;
-        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
-        margin-top: 100px;
+      .app-title {
+        font-family: "Unbounded", sans-serif;
+        font-weight: 900;
+        font-size: 1.6rem;
+        letter-spacing: 0.04em;
+        color: #fff;
+        text-shadow:
+          0 0 30px var(--accent-glow),
+          0 2px 8px rgba(0, 0, 0, 0.5);
+        line-height: 1;
       }
 
-      .event-text {
-        font-family: "Arial Rounded MT Bold", Arial, Helvetica, sans-serif;
-        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+      .app-subtitle {
+        font-family: "Unbounded", sans-serif;
+        font-weight: 400;
+        font-size: 0.7rem;
+        letter-spacing: 0.18em;
+        color: rgba(196, 148, 255, 0.75);
+        text-transform: uppercase;
+        margin-top: 0.35rem;
       }
 
-      /* Toast notification */
+      .badge-access {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        font-family: "Inter", sans-serif;
+        font-size: 0.6rem;
+        font-weight: 600;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--accent);
+        background: rgba(168, 85, 247, 0.12);
+        border: 1px solid rgba(168, 85, 247, 0.3);
+        border-radius: 999px;
+        padding: 0.2rem 0.65rem;
+        margin-top: 0.6rem;
+      }
+
+      .badge-dot {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: var(--accent);
+        box-shadow: 0 0 6px var(--accent);
+        animation: blink 2s ease-in-out infinite;
+      }
+
+      @keyframes blink {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.3;
+        }
+      }
+
+      /* ── Scan screen ── */
+      .scan-hint {
+        font-family: "Inter", sans-serif;
+        font-size: 0.82rem;
+        color: rgba(210, 200, 230, 0.8);
+        line-height: 1.55;
+        text-align: center;
+      }
+
+      .qr-icon-wrap {
+        width: 88px;
+        height: 88px;
+        margin: 0 auto 1.5rem;
+        border-radius: 1.25rem;
+        background: rgba(168, 85, 247, 0.1);
+        border: 1.5px solid rgba(168, 85, 247, 0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 0 24px rgba(168, 85, 247, 0.2);
+      }
+
+      .scan-btn {
+        font-family: "Unbounded", sans-serif;
+        font-weight: 700;
+        font-size: 0.8rem;
+        letter-spacing: 0.06em;
+        color: #fff;
+        background: linear-gradient(135deg, #9333ea, #6d28d9);
+        border: none;
+        border-radius: 1rem;
+        padding: 1.1rem 1.5rem;
+        width: 100%;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+        transition:
+          transform 0.15s ease,
+          box-shadow 0.15s ease;
+        box-shadow:
+          0 4px 20px rgba(124, 58, 237, 0.5),
+          0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.6rem;
+      }
+
+      .scan-btn::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.12) 0%,
+          transparent 60%
+        );
+        pointer-events: none;
+      }
+
+      .scan-btn:active {
+        transform: scale(0.97);
+        box-shadow: 0 2px 10px rgba(124, 58, 237, 0.4);
+      }
+
+      /* ── Result card ── */
+      .result-card {
+        background: var(--card-bg);
+        backdrop-filter: blur(24px);
+        -webkit-backdrop-filter: blur(24px);
+        border-radius: 1.5rem;
+        border: 1px solid var(--border);
+        padding: 1.25rem;
+        box-shadow:
+          0 8px 40px rgba(0, 0, 0, 0.5),
+          0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+        animation: cardIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+      }
+
+      @keyframes cardIn {
+        from {
+          opacity: 0;
+          transform: translateY(18px) scale(0.98);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      .card-event-title {
+        font-family: "Unbounded", sans-serif;
+        font-weight: 700;
+        font-size: 0.75rem;
+        letter-spacing: 0.08em;
+        text-align: center;
+        color: rgba(196, 148, 255, 0.9);
+        text-transform: uppercase;
+        padding-bottom: 0.9rem;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 1rem;
+      }
+
+      .ticket-divider {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin: 0.75rem 0;
+        color: rgba(255, 255, 255, 0.12);
+        font-size: 0.7rem;
+        letter-spacing: 0.12em;
+      }
+      .ticket-divider::before,
+      .ticket-divider::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: var(--border);
+      }
+
+      .field-row {
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+        padding: 0.6rem 0.75rem;
+        border-radius: 0.75rem;
+        border-left: 2px solid var(--field-border);
+        background: rgba(255, 255, 255, 0.03);
+        transition: border-color 0.2s;
+      }
+
+      .field-label {
+        font-family: "Inter", sans-serif;
+        font-size: 0.58rem;
+        font-weight: 600;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: rgba(160, 140, 190, 0.7);
+      }
+
+      .field-value {
+        font-family: "Inter", sans-serif;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #fff;
+        line-height: 1.3;
+      }
+
+      .status-valid {
+        font-family: "Unbounded", sans-serif;
+        font-size: 0.68rem;
+        font-weight: 700;
+        color: #34d399;
+        background: rgba(52, 211, 153, 0.1);
+        border: 1px solid rgba(52, 211, 153, 0.25);
+        border-radius: 0.6rem;
+        padding: 0.55rem 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        letter-spacing: 0.04em;
+      }
+
+      .status-used {
+        font-family: "Unbounded", sans-serif;
+        font-size: 0.68rem;
+        font-weight: 700;
+        color: #f87171;
+        background: rgba(248, 113, 113, 0.1);
+        border: 1px solid rgba(248, 113, 113, 0.25);
+        border-radius: 0.6rem;
+        padding: 0.55rem 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        letter-spacing: 0.04em;
+        flex-wrap: wrap;
+      }
+
+      .next-btn {
+        font-family: "Inter", sans-serif;
+        font-weight: 600;
+        font-size: 0.8rem;
+        color: rgba(200, 180, 230, 0.8);
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 0.85rem;
+        padding: 0.75rem 1rem;
+        width: 100%;
+        cursor: pointer;
+        transition:
+          background 0.15s,
+          color 0.15s;
+        margin-top: 1rem;
+        letter-spacing: 0.03em;
+      }
+      .next-btn:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: #fff;
+      }
+      .next-btn:active {
+        transform: scale(0.98);
+      }
+
+      /* ── Skeleton ── */
+      @keyframes skeletonPulse {
+        0%,
+        100% {
+          opacity: 0.3;
+        }
+        50% {
+          opacity: 0.7;
+        }
+      }
+      .skeleton {
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 5px;
+        animation: skeletonPulse 1.4s ease-in-out infinite;
+        display: block;
+        height: 0.85em;
+        width: 80%;
+      }
+
+      /* ── Toast ── */
       #toast {
         position: fixed;
         bottom: 2rem;
         left: 50%;
-        transform: translateX(-50%) translateY(120%);
+        transform: translateX(-50%) translateY(130%);
         z-index: 9999;
         min-width: 280px;
         max-width: 360px;
         transition:
-          transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
-          opacity 0.35s ease;
+          transform 0.38s cubic-bezier(0.34, 1.56, 0.64, 1),
+          opacity 0.3s ease;
         opacity: 0;
         pointer-events: none;
       }
-
       #toast.show {
         transform: translateX(-50%) translateY(0);
         opacity: 1;
         pointer-events: auto;
       }
+      #toast-inner {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        border-radius: 1.1rem;
+        padding: 0.9rem 1.1rem;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        border: 1px solid transparent;
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+      }
     </style>
   </head>
 
-  <body
-    class="text-gray-100 font-sans min-h-screen p-4 flex items-center justify-center"
-  >
-    <!-- Toast notification -->
+  <body class="min-h-screen p-4 flex items-center justify-center">
+    <!-- Toast -->
     <div id="toast">
-      <div
-        id="toast-inner"
-        class="flex items-start gap-3 rounded-2xl px-4 py-3.5 shadow-2xl border backdrop-blur-md"
-      >
-        <span id="toast-icon" class="text-xl mt-0.5 shrink-0"></span>
+      <div id="toast-inner">
+        <span
+          id="toast-icon"
+          style="font-size: 1.2rem; margin-top: 1px; flex-shrink: 0"
+        ></span>
         <div>
-          <p id="toast-title" class="font-bold text-sm leading-tight"></p>
-          <p id="toast-body" class="text-xs mt-0.5 opacity-80 leading-snug"></p>
+          <p
+            id="toast-title"
+            style="
+              font-family: &quot;Unbounded&quot;, sans-serif;
+              font-size: 0.72rem;
+              font-weight: 700;
+              line-height: 1.3;
+              letter-spacing: 0.04em;
+            "
+          ></p>
+          <p
+            id="toast-body"
+            style="
+              font-family: &quot;Inter&quot;, sans-serif;
+              font-size: 0.75rem;
+              margin-top: 0.2rem;
+              opacity: 0.8;
+              line-height: 1.4;
+            "
+          ></p>
         </div>
       </div>
     </div>
 
-    <div id="app-shell" class="p-6">
-      <header class="text-center my-4 content-layer">
-        <h1 class="text-3xl title tracking-wide">LEVEL DANCE</h1>
-        <p class="event-text">Мероприятия</p>
-        <p
-          class="text-xs text-purple-200 font-medium tracking-widest uppercase mt-2"
-        >
-          Контроль Доступа
-        </p>
+    <div id="app-shell">
+      <!-- Header -->
+      <header class="header-wrap content-layer">
+        <div style="display: flex; flex-direction: column; align-items: center">
+          <h1 class="app-title">LEVEL DANCE</h1>
+          <p class="app-subtitle">Мероприятия</p>
+          <span class="badge-access">
+            <span class="badge-dot"></span>
+            Контроль доступа
+          </span>
+        </div>
       </header>
 
-      <main class="w-full content-layer my-auto">
-        <div id="scan-container" class="w-full text-center p-2">
-          <p class="text-gray-100 text-sm mb-8 font-medium drop-shadow-md">
-            Нажмите кнопку ниже, чтобы открыть камеру Telegram и отсканировать
-            QR-код билета.
+      <!-- Main -->
+      <main
+        class="content-layer"
+        style="flex: 1; display: flex; align-items: center; padding: 1.25rem"
+      >
+        <!-- Scan screen -->
+        <div id="scan-container" style="width: 100%; text-align: center">
+          <div class="qr-icon-wrap">
+            <svg
+              width="44"
+              height="44"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="rgba(168,85,247,0.9)"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect x="3" y="3" width="7" height="7" rx="1" />
+              <rect x="14" y="3" width="7" height="7" rx="1" />
+              <rect x="3" y="14" width="7" height="7" rx="1" />
+              <path d="M14 14h2v2h-2zM18 14h3M14 18h2M18 18h3v3M14 21h2" />
+            </svg>
+          </div>
+          <p class="scan-hint" style="margin-bottom: 1.75rem">
+            Нажмите кнопку ниже, чтобы открыть камеру Telegram<br />и
+            отсканировать QR-код билета.
           </p>
-
-          <button
-            type="button"
-            onclick="startScanning()"
-            class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 px-6 rounded-xl transition duration-200 shadow-lg shadow-purple-900/50 active:scale-95 text-base tracking-wide scaner-button"
-          >
-            [ ] Открыть сканер
+          <button type="button" onclick="startScanning()" class="scan-btn">
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"
+              />
+              <rect x="7" y="7" width="10" height="10" rx="1" />
+            </svg>
+            Открыть сканер
           </button>
         </div>
 
+        <!-- Result card -->
         <div
           id="result-container"
-          class="w-full bg-slate-950/75 backdrop-blur-md rounded-2xl border border-white/10 p-5 shadow-xl hidden"
+          class="result-card hidden"
+          style="width: 100%"
         >
-          <h2
-            id="event-title"
-            class="text-base font-bold text-center text-purple-200 border-b border-white/10 pb-3 mb-4 tracking-wide"
-          >
+          <!-- Event title -->
+          <h2 id="event-title" class="card-event-title">
             Название мероприятия
           </h2>
 
-          <div class="space-y-3.5 text-sm">
-            <div>
-              <span
-                class="text-[10px] text-gray-400 uppercase font-bold tracking-widest block"
-                >Статус билета</span
-              >
-              <p id="ticket-status" class="font-bold mt-0.5">—</p>
+          <!-- Status — top and prominent -->
+          <div style="margin-bottom: 0.85rem">
+            <p
+              class="field-label"
+              style="margin-bottom: 0.35rem; padding-left: 0.1rem"
+            >
+              Статус билета
+            </p>
+            <div id="ticket-status">—</div>
+          </div>
+
+          <div class="ticket-divider">🎫</div>
+
+          <!-- Fields -->
+          <div style="display: flex; flex-direction: column; gap: 0.5rem">
+            <div class="field-row">
+              <span class="field-label">ФИО Покупателя</span>
+              <p id="buyer-name" class="field-value">—</p>
             </div>
 
-            <div>
-              <span
-                class="text-[10px] text-gray-400 uppercase font-bold tracking-widest block"
-                >ФИО Покупателя</span
+            <div class="field-row">
+              <span class="field-label">Telegram аккаунт</span>
+              <p
+                id="tg-username"
+                class="field-value"
+                style="color: rgba(196, 148, 255, 0.9)"
               >
-              <p id="buyer-name" class="font-semibold text-white mt-0.5">—</p>
+                —
+              </p>
             </div>
 
-            <div>
-              <span
-                class="text-[10px] text-gray-400 uppercase font-bold tracking-widest block"
-                >Telegram аккаунт</span
-              >
-              <p id="tg-username" class="text-purple-300 mt-0.5">—</p>
-            </div>
-
-            <div class="grid grid-cols-2 gap-2 pt-2 border-t border-white/5">
-              <div>
-                <span
-                  class="text-[10px] text-gray-400 uppercase font-bold tracking-widest block"
-                  >ID / Тип</span
+            <div
+              style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem"
+            >
+              <div class="field-row">
+                <span class="field-label">ID / Тип</span>
+                <p
+                  id="event-info"
+                  class="field-value"
+                  style="font-size: 0.78rem"
                 >
-                <p id="event-info" class="text-xs text-gray-200 mt-0.5">—</p>
+                  —
+                </p>
               </div>
-              <div class="text-right">
-                <span
-                  class="text-[10px] text-gray-400 uppercase font-bold tracking-widest block"
-                  >Цена билета</span
-                >
-                <p id="ticket-price" class="text-emerald-400 font-bold mt-0.5">
+              <div
+                class="field-row"
+                style="border-left-color: rgba(52, 211, 153, 0.3)"
+              >
+                <span class="field-label">Цена</span>
+                <p id="ticket-price" class="field-value" style="color: #34d399">
                   —
                 </p>
               </div>
             </div>
           </div>
 
-          <button
-            onclick="resetScanner()"
-            class="w-full mt-6 bg-white/10 hover:bg-white/20 text-white font-medium py-2.5 px-4 rounded-xl border border-white/10 transition duration-200 text-sm shadow-inner"
-          >
-            Сканировать следующий
+          <button id="scan-next-btn" onclick="resetScanner()" class="next-btn">
+            ↩ Сканировать следующий
           </button>
         </div>
       </main>
@@ -203,10 +565,9 @@
           ? window.Telegram.WebApp
           : null;
 
-      // СЮДА СВОЙ ДОМЕН / URL ОТ NGROK СЕРВЕРА FASTAPI
       const API_BASE_URL = "https://daughter-equate-suburb.ngrok-free.dev";
 
-      // ─── Toast уведомления ───────────────────────────────────────────────────
+      // ─── Toast ───────────────────────────────────────────────────────────────
 
       let toastTimer = null;
 
@@ -217,72 +578,89 @@
         const ttl = document.getElementById("toast-title");
         const tbd = document.getElementById("toast-body");
 
-        // Сбрасываем предыдущий таймер, если был
         if (toastTimer) clearTimeout(toastTimer);
 
-        // Стили по типу
         const styles = {
           error: {
-            wrap: "bg-red-950/90 border-red-500/40 text-red-100",
+            bg: "rgba(60,10,10,0.95)",
+            border: "rgba(248,113,113,0.35)",
+            color: "#fecaca",
             ico: "❌",
           },
           warn: {
-            wrap: "bg-amber-950/90 border-amber-500/40 text-amber-100",
+            bg: "rgba(50,35,5,0.95)",
+            border: "rgba(251,191,36,0.35)",
+            color: "#fde68a",
             ico: "⚠️",
           },
           success: {
-            wrap: "bg-emerald-950/90 border-emerald-500/40 text-emerald-100",
+            bg: "rgba(5,40,25,0.95)",
+            border: "rgba(52,211,153,0.35)",
+            color: "#a7f3d0",
             ico: "✅",
           },
         };
-
         const s = styles[type] || styles.error;
-        inner.className = `flex items-start gap-3 rounded-2xl px-4 py-3.5 shadow-2xl border backdrop-blur-md ${s.wrap}`;
+
+        inner.style.background = s.bg;
+        inner.style.borderColor = s.border;
+        inner.style.color = s.color;
         icon.textContent = s.ico;
         ttl.textContent = title;
         tbd.textContent = body;
 
         toast.classList.add("show");
-
-        // Автоскрытие через 4 секунды
-        toastTimer = setTimeout(() => {
-          toast.classList.remove("show");
-        }, 4000);
+        toastTimer = setTimeout(() => toast.classList.remove("show"), 4200);
       }
 
-      // Закрытие по тапу на тост
       document.getElementById("toast").addEventListener("click", () => {
         document.getElementById("toast").classList.remove("show");
         if (toastTimer) clearTimeout(toastTimer);
       });
 
-      // ─── Инициализация ТГ WebApp ────────────────────────────────────────────
+      // ─── Init ────────────────────────────────────────────────────────────────
 
       function initTelegramWebApp() {
         if (!tg) return;
         try {
           tg.ready();
           if (typeof tg.expand === "function") tg.expand();
-        } catch (e) {
-          // Тихая ошибка инициализации — не мешаем работе
-        }
+        } catch (e) {}
       }
 
       initTelegramWebApp();
 
-      // ─── Состояние загрузки карточки ────────────────────────────────────────
+      let isTicketViewMode = false;
+
+      (function checkStartParam() {
+        const startParam = tg?.initDataUnsafe?.start_param;
+        if (startParam) {
+          isTicketViewMode = true;
+          document.getElementById("scan-next-btn").classList.add("hidden");
+          document.getElementById("scan-container").classList.add("hidden");
+          document
+            .getElementById("result-container")
+            .classList.remove("hidden");
+          setLoadingState();
+          fetchDataFromServer(startParam);
+        }
+      })();
+
+      // ─── Loading skeleton ────────────────────────────────────────────────────
 
       function setLoadingState() {
-        document.getElementById("event-title").innerText =
-          "Загрузка данных билета...";
-        document.getElementById("buyer-name").innerText = "—";
-        document.getElementById("tg-username").innerText = "—";
-        document.getElementById("event-info").innerText = "—";
-        document.getElementById("ticket-price").innerText = "—";
-        document.getElementById("ticket-status").innerText = "—";
+        const skel = (w = "75%") =>
+          `<span class="skeleton" style="width:${w}"></span>`;
+        document.getElementById("event-title").innerHTML = skel("55%");
+        document.getElementById("buyer-name").innerHTML = skel("80%");
+        document.getElementById("tg-username").innerHTML = skel("60%");
+        document.getElementById("event-info").innerHTML = skel("70%");
+        document.getElementById("ticket-price").innerHTML = skel("45%");
+        document.getElementById("ticket-status").innerHTML =
+          `<div style="background:rgba(255,255,255,0.07);border-radius:0.6rem;padding:0.55rem 0.75rem">${skel("65%")}</div>`;
       }
 
-      // ─── Запуск сканера ──────────────────────────────────────────────────────
+      // ─── Scanner ─────────────────────────────────────────────────────────────
 
       function startScanning() {
         if (!tg) {
@@ -304,7 +682,6 @@
           );
           return;
         }
-
         tg.showScanQrPopup(
           { text: "Наведите камеру на QR-код билета" },
           function (text) {
@@ -313,8 +690,6 @@
           },
         );
       }
-
-      // ─── Обработка отсканированного URL ─────────────────────────────────────
 
       function handleScannedUrl(text) {
         if (!text || typeof text !== "string") {
@@ -325,7 +700,6 @@
           );
           return;
         }
-
         let parsedUrl;
         try {
           parsedUrl = new URL(text);
@@ -347,16 +721,19 @@
           );
           return;
         }
-
         fetchDataFromServer(ticketId);
       }
 
-      // ─── Запрос на сервер ────────────────────────────────────────────────────
+      // ─── Fetch ───────────────────────────────────────────────────────────────
 
       async function fetchDataFromServer(ticketId) {
-        setLoadingState();
-        document.getElementById("scan-container").classList.add("hidden");
-        document.getElementById("result-container").classList.remove("hidden");
+        if (!isTicketViewMode) {
+          setLoadingState();
+          document.getElementById("scan-container").classList.add("hidden");
+          document
+            .getElementById("result-container")
+            .classList.remove("hidden");
+        }
 
         const targetUrl = `${API_BASE_URL}/api/participant/${encodeURIComponent(ticketId)}`;
 
@@ -372,25 +749,24 @@
 
           if (!response.ok) {
             resetScanner();
-            if (response.status === 404) {
+            if (response.status === 404)
               showToast(
                 "error",
                 "Билет не найден",
                 "Этот QR-код не зарегистрирован в системе.",
               );
-            } else if (response.status === 403) {
+            else if (response.status === 403)
               showToast(
                 "error",
                 "Нет доступа",
                 "Авторизация не прошла. Обратитесь к организатору.",
               );
-            } else {
+            else
               showToast(
                 "error",
                 "Ошибка сервера",
                 `Код ответа: ${response.status}. Попробуйте позже.`,
               );
-            }
             return;
           }
 
@@ -406,7 +782,7 @@
         }
       }
 
-      // ─── Отрисовка карточки билета ───────────────────────────────────────────
+      // ─── Render ──────────────────────────────────────────────────────────────
 
       function renderTicketCard(ticket) {
         document.getElementById("event-title").innerText =
@@ -425,22 +801,18 @@
           ? `${ticket.price} ₽`
           : "0 ₽";
 
-        const statusElement = document.getElementById("ticket-status");
+        const statusEl = document.getElementById("ticket-status");
         if (ticket?.entered_at) {
-          statusElement.innerText = `❌ УЖЕ ИСПОЛЬЗОВАН (${ticket.entered_at})`;
-          statusElement.className =
-            "text-xs font-bold mt-0.5 text-red-400 bg-red-950/40 p-1.5 rounded border border-red-500/20";
+          statusEl.innerHTML = `<div class="status-used"><span>❌</span><span>УЖЕ ИСПОЛЬЗОВАН<br><span style="font-family:'Inter',sans-serif;font-weight:500;font-size:0.65rem;opacity:0.75">${ticket.entered_at}</span></span></div>`;
         } else {
-          statusElement.innerText = "✅ ДЕЙСТВИТЕЛЕН (Вход разрешен)";
-          statusElement.className =
-            "text-xs font-bold mt-0.5 text-emerald-400 bg-emerald-950/40 p-1.5 rounded border border-emerald-500/20";
+          statusEl.innerHTML = `<div class="status-valid"><span>✅</span><span>ДЕЙСТВИТЕЛЕН — ВХОД РАЗРЕШЁН</span></div>`;
         }
 
         document.getElementById("scan-container").classList.add("hidden");
         document.getElementById("result-container").classList.remove("hidden");
       }
 
-      // ─── Сброс сканера ───────────────────────────────────────────────────────
+      // ─── Reset ───────────────────────────────────────────────────────────────
 
       function resetScanner() {
         document.getElementById("result-container").classList.add("hidden");
