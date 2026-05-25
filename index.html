@@ -906,6 +906,14 @@
             Отметить вход`;
         }
 
+        // Кнопка "Сканировать следующий" — только в режиме сканера
+        const nextBtn = document.getElementById("scan-next-btn");
+        if (isTicketViewMode) {
+          nextBtn.classList.add("hidden");
+        } else {
+          nextBtn.classList.remove("hidden");
+        }
+
         document.getElementById("scan-container").classList.add("hidden");
         document.getElementById("result-container").classList.remove("hidden");
       }
