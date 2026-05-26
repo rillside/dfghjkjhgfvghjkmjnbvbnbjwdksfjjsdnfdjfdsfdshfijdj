@@ -647,6 +647,58 @@
         margin-bottom: 0.5rem;
       }
 
+      /* ── Pagination ── */
+      .pagination {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.4rem;
+        margin-top: 0.75rem;
+        padding-top: 0.65rem;
+        border-top: 1px solid var(--border);
+      }
+
+      .page-btn {
+        font-family: "Inter", sans-serif;
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: rgba(196, 148, 255, 0.8);
+        background: rgba(168, 85, 247, 0.08);
+        border: 1px solid rgba(168, 85, 247, 0.2);
+        border-radius: 0.5rem;
+        padding: 0.3rem 0.65rem;
+        cursor: pointer;
+        transition:
+          background 0.15s,
+          color 0.15s;
+        min-width: 32px;
+        text-align: center;
+      }
+      .page-btn:hover {
+        background: rgba(168, 85, 247, 0.2);
+        color: #fff;
+      }
+      .page-btn:active {
+        transform: scale(0.95);
+      }
+      .page-btn.active {
+        background: rgba(168, 85, 247, 0.35);
+        color: #fff;
+        border-color: rgba(168, 85, 247, 0.6);
+        cursor: default;
+      }
+      .page-btn:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+        transform: none;
+      }
+      .page-info {
+        font-family: "Inter", sans-serif;
+        font-size: 0.68rem;
+        color: rgba(160, 140, 190, 0.5);
+        padding: 0 0.2rem;
+      }
+
       /* ── Toast ── */
       #toast {
         position: fixed;
@@ -1391,6 +1443,11 @@
         }
       }
 
+      // ─── Events pagination state ──────────────────────────────────────────────
+      let eventsAll = [];
+      let eventsPage = 1;
+      const EVENTS_PER_PAGE = 8;
+
       function renderEventsList(data) {
         const body = document.getElementById("events-list-body");
 
@@ -1403,32 +1460,50 @@
           return;
         }
 
-        const events = Array.isArray(data) ? data : [data];
-        body.innerHTML =
-          `<div class="list-scroll" id="events-scroll">` +
-          events
-            .map((ev) => {
-              const typeRu =
-                ev.event_type === "festival" ? "Фестиваль" : "Концерт";
-              const typeBadge = `<span style="font-family:'Unbounded',sans-serif;font-size:0.55rem;font-weight:700;letter-spacing:0.08em;color:${ev.event_type === "festival" ? "#f59e0b" : "#a855f7"};background:${ev.event_type === "festival" ? "rgba(245,158,11,0.12)" : "rgba(168,85,247,0.12)"};border:1px solid ${ev.event_type === "festival" ? "rgba(245,158,11,0.3)" : "rgba(168,85,247,0.3)"};border-radius:999px;padding:0.15rem 0.5rem">${typeRu}</span>`;
-              const meta = [];
-              if (ev.event_date) meta.push(`<span>📅 ${ev.event_date}</span>`);
-              if (ev.event_location)
-                meta.push(`<span>📍 ${ev.event_location}</span>`);
-              const safeName = (ev.event_name || "").replace(/"/g, "&quot;");
-              return `
-              <div class="event-card" data-event-id="${ev.event_id}" data-event-name="${safeName}">
-                <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.3rem">
-                  <span class="event-card-name">${ev.event_name} <span style="opacity:0.45;font-weight:400">(#${ev.event_id})</span></span>
-                  ${typeBadge}
-                </div>
-                ${meta.length ? `<div class="event-card-meta">${meta.join("")}</div>` : ""}
-              </div>`;
-            })
-            .join("") +
-          `</div>`;
+        eventsAll = Array.isArray(data) ? data : [data];
+        eventsPage = 1;
+        renderEventsPage();
+      }
 
-        // Делегирование — один обработчик на весь список
+      function renderEventsPage() {
+        const body = document.getElementById("events-list-body");
+        const total = eventsAll.length;
+        const totalPages = Math.ceil(total / EVENTS_PER_PAGE);
+        const start = (eventsPage - 1) * EVENTS_PER_PAGE;
+        const slice = eventsAll.slice(start, start + EVENTS_PER_PAGE);
+
+        const cardsHtml = slice
+          .map((ev) => {
+            const typeRu =
+              ev.event_type === "festival" ? "Фестиваль" : "Концерт";
+            const typeBadge = `<span style="font-family:'Unbounded',sans-serif;font-size:0.55rem;font-weight:700;letter-spacing:0.08em;color:${ev.event_type === "festival" ? "#f59e0b" : "#a855f7"};background:${ev.event_type === "festival" ? "rgba(245,158,11,0.12)" : "rgba(168,85,247,0.12)"};border:1px solid ${ev.event_type === "festival" ? "rgba(245,158,11,0.3)" : "rgba(168,85,247,0.3)"};border-radius:999px;padding:0.15rem 0.5rem">${typeRu}</span>`;
+            const meta = [];
+            if (ev.event_date) meta.push(`<span>📅 ${ev.event_date}</span>`);
+            if (ev.event_location)
+              meta.push(`<span>📍 ${ev.event_location}</span>`);
+            const safeName = (ev.event_name || "").replace(/"/g, "&quot;");
+            return `<div class="event-card" data-event-id="${ev.event_id}" data-event-name="${safeName}">
+            <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.3rem">
+              <span class="event-card-name">${ev.event_name} <span style="opacity:0.45;font-weight:400">(#${ev.event_id})</span></span>
+              ${typeBadge}
+            </div>
+            ${meta.length ? `<div class="event-card-meta">${meta.join("")}</div>` : ""}
+          </div>`;
+          })
+          .join("");
+
+        const paginationHtml =
+          totalPages > 1
+            ? `
+          <div class="pagination">
+            <button class="page-btn" ${eventsPage === 1 ? "disabled" : ""} onclick="eventsPage--;renderEventsPage()">‹</button>
+            <span class="page-info">${eventsPage} / ${totalPages}</span>
+            <button class="page-btn" ${eventsPage === totalPages ? "disabled" : ""} onclick="eventsPage++;renderEventsPage()">›</button>
+          </div>`
+            : "";
+
+        body.innerHTML = `<div id="events-scroll">${cardsHtml}</div>${paginationHtml}`;
+
         document
           .getElementById("events-scroll")
           .addEventListener("click", function (e) {
@@ -1443,6 +1518,9 @@
       }
 
       // ─── Attendees list ───────────────────────────────────────────────────────
+      let attendeesAll = [];
+      let attendeesPage = 1;
+      const ATTENDEES_PER_PAGE = 10;
 
       async function openAttendees(eventId, eventName) {
         showOnly("attendees-container");
@@ -1467,8 +1545,14 @@
           );
 
           if (!response.ok) {
+            let msg = "";
+            if (response.status === 403)
+              msg = "🚫 Нет доступа к этому мероприятию.";
+            else if (response.status === 404)
+              msg = "🔍 Мероприятие не найдено.";
+            else msg = `Ошибка загрузки. Код: ${response.status}`;
             document.getElementById("attendees-list-body").innerHTML =
-              `<div class="empty-state">Ошибка загрузки. Код: ${response.status}</div>`;
+              `<div class="empty-state">${msg}</div>`;
             return;
           }
 
@@ -1481,35 +1565,57 @@
       }
 
       function renderAttendeesList(data) {
-        const body = document.getElementById("attendees-list-body");
-
         if (!data || (Array.isArray(data) && data.length === 0)) {
-          body.innerHTML = `<div class="empty-state">Список пуст.</div>`;
+          document.getElementById("attendees-list-body").innerHTML =
+            `<div class="empty-state">Список пуст.</div>`;
           return;
         }
 
-        const list = Array.isArray(data) ? data : Object.values(data);
-        const entered = list.filter((a) => a.entered_at).length;
-        document.getElementById("attendees-counter").textContent =
-          `Вошли: ${entered} / ${list.length}`;
+        attendeesAll = Array.isArray(data) ? data : Object.values(data);
+        attendeesPage = 1;
 
-        body.innerHTML = list
+        const entered = attendeesAll.filter((a) => a.entered_at).length;
+        document.getElementById("attendees-counter").textContent =
+          `Вошли: ${entered} / ${attendeesAll.length}`;
+
+        renderAttendeesPage();
+      }
+
+      function renderAttendeesPage() {
+        const body = document.getElementById("attendees-list-body");
+        const total = attendeesAll.length;
+        const totalPages = Math.ceil(total / ATTENDEES_PER_PAGE);
+        const start = (attendeesPage - 1) * ATTENDEES_PER_PAGE;
+        const slice = attendeesAll.slice(start, start + ATTENDEES_PER_PAGE);
+
+        const rowsHtml = slice
           .map((a) => {
             const icon = a.entered_at ? "✅" : "⏳";
             const enteredLine = a.entered_at
               ? `<div class="attendee-entered">Вход: ${a.entered_at}</div>`
               : "";
-            return `
-            <div class="attendee-row">
-              <div class="attendee-status">${icon}</div>
-              <div class="attendee-info">
-                <div class="attendee-name">${a.name || "—"}</div>
-                <div class="attendee-price">${a.price ? a.price + " ₽" : ""}</div>
-                ${enteredLine}
-              </div>
-            </div>`;
+            return `<div class="attendee-row">
+            <div class="attendee-status">${icon}</div>
+            <div class="attendee-info">
+              <div class="attendee-name">${a.name || "—"}</div>
+              <div class="attendee-price">${a.price ? a.price + " ₽" : ""}</div>
+              ${enteredLine}
+            </div>
+          </div>`;
           })
           .join("");
+
+        const paginationHtml =
+          totalPages > 1
+            ? `
+          <div class="pagination">
+            <button class="page-btn" ${attendeesPage === 1 ? "disabled" : ""} onclick="attendeesPage--;renderAttendeesPage()">‹</button>
+            <span class="page-info">${attendeesPage} / ${totalPages}</span>
+            <button class="page-btn" ${attendeesPage === totalPages ? "disabled" : ""} onclick="attendeesPage++;renderAttendeesPage()">›</button>
+          </div>`
+            : "";
+
+        body.innerHTML = rowsHtml + paginationHtml;
       }
 
       function closeAttendees() {
